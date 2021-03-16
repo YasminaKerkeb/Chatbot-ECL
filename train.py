@@ -14,7 +14,7 @@ from torch import optim
 import torch.nn.functional as F
 import pandas as pd
 import time
-from preprocess import variablesFromPair
+from preprocess import variablesFromPair, prepareData, normalizeString
 from utils import showPlot
 import random
 
@@ -83,18 +83,23 @@ def train(model, optimizer, train_iter, metadata, grad_clip, n_iters):
 
 
 def main():
-    #Load Data
-
-
     
+
     cuda = torch.cuda.is_available() 
     torch.set_default_tensor_type(torch.cuda.FloatTensor if cuda else torch.FloatTensor)
     device = torch.device('cuda' if cuda else 'cpu')
 
     print("Using %s for training" % ('GPU' if cuda else 'CPU'))
-    print('Loading dataset...', end='', flush=True)    
+    print('Loading dataset...', end='', flush=True)  
+
+    #Loading data
+    data=pd.read_csv('data/youssef_data.csv',encoding="latin-1",header=None,names=["Question","Answer"]) 
+    data["Question"]=data["Question"].apply(normalizeString)
+    data["Answer"]=data["Answer"].apply(normalizeString) 
+    train_input_lang, train_output_lang, train_pairs = prepareData(data,'questions', 'answers', False)
 
     hidden_size = 100
+
 
     model=train_model_factory(input_size,hidden_size,output_size,n_layers,dropout_p)
     
@@ -110,8 +115,8 @@ def main():
         for epoch in range(args.max_epochs):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, optimizer, train_iter, metadata, args.gradient_clip)
-            val_loss = evaluate(model, val_iter, metadata)
+            train_loss = train(model, optimizer)
+            val_loss = evaluate(mode)
             print("[Epoch=%d/%d] train_loss %f - val_loss %f time=%s " %
                   (epoch + 1, args.max_epochs, train_loss, val_loss, datetime.now() - start), end='')
 
