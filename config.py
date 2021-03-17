@@ -10,6 +10,3 @@ GRU = 'GRU'
 MODEL_FORMAT = "seq2seq-%d-%f.pkl"
 MODEL_START_FORMAT = "seq2seq-%d"
 
-hidden_size = 300
-n_layers=3
-dropout_p=0.1
