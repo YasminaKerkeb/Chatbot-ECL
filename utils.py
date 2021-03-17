@@ -7,13 +7,14 @@ import matplotlib.ticker as ticker
 import numpy as np
 
 
-def showPlot(points):
+def showPlot(points,args):
     plt.figure()
     fig, ax = plt.subplots()
     # this locator puts ticks at regular intervals
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
+    plt.savefig('plots/loss_curve_'+str(args[0])+'_'+str(args[1]))
     plt.show()
     
     

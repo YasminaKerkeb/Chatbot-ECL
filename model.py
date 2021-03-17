@@ -1,6 +1,6 @@
 import torch
 from models.seq2seq.encoder import encoder_factory
-from models.seq2seq.decoder import decoder_factory
+from models.seq2seq.attention import decoder_factory
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
 from collections import OrderedDict
 

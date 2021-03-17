@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import random
 import string
-from ...config import SOS_token, EOS_token, MAX_LENGTH
+from config import SOS_token, EOS_token, MAX_LENGTH
 from torch.autograd import Variable
-from ...preprocess import variableFromSentence
+from preprocess import variableFromSentence
 from .sampling import GreedySampler, RandomSampler, BeamSearch
 
 
@@ -36,20 +36,20 @@ class Seq2SeqTrain(nn.Module):
         self.decoder = decoder
         self.teacher_forcing_ratio = teacher_forcing_ratio
 
-    def forward(self, question, answer):
+    def forward(self, question, answer,criterion = nn.NLLLoss()):
     
-        encoder_hidden = encoder.initHidden()
+        encoder_hidden = self.encoder.initHidden()
 
 
         input_length = question.size()[0]
         target_length = answer.size()[0]
 
-        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, encoder.hidden_size))
+        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, self.encoder.hidden_size))
 
         loss = 0
 
         for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(
+            encoder_output, encoder_hidden = self.encoder(
                 question[ei], encoder_hidden)
             encoder_outputs[ei] = encoder_output[0][0]
 
@@ -58,26 +58,25 @@ class Seq2SeqTrain(nn.Module):
 
         decoder_hidden = encoder_hidden
 
-        use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
+        use_teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
 
         if use_teacher_forcing:
             # Teacher forcing: Feed the target as the next input
             for di in range(target_length):
                 
-                decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_output, decoder_hidden, decoder_attention = self.decoder(
                     decoder_input, decoder_hidden, encoder_outputs)
             
                 
-                
+                loss += criterion(decoder_output, answer[di])
                 decoder_input = answer[di]  # Teacher forcing
 
         else:
             # Without teacher forcing: use its own predictions as the next input
             for di in range(target_length):
                 
-                decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_output, decoder_hidden, decoder_attention = self.decoder(
                     decoder_input, decoder_hidden, encoder_outputs)
-                
                 
                 
                 topv, topi = decoder_output.data.topk(1)
@@ -85,10 +84,17 @@ class Seq2SeqTrain(nn.Module):
 
                 decoder_input = Variable(torch.LongTensor([[ni]]))
                 decoder_input = decoder_input
+                loss += criterion(decoder_output, answer[di])
 
                 if ni == EOS_token:
                     break
 
+        loss.backward()
+        
+
+
+   
+        return loss.item() / target_length
         
 
 

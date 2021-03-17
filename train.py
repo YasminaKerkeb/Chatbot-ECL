@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import pandas as pd
 import time
 from preprocess import variablesFromPair, prepareData, normalizeString
-from utils import showPlot
+from utils import showPlot, timeSince
 import random
 
 
@@ -41,19 +41,19 @@ def evaluate(model, val_iter, metadata):
     return total_loss / len(val_iter)
 
 
-def train(model, optimizer, train_iter, metadata, grad_clip, n_iters):
+def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
-
+    encoder=model.encoder
+    decoder=model.decoder
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    encoder_optimizer = optim.SGD(model.encoder.parameters(), lr=0.01)
+    decoder_optimizer = optim.SGD(model.decoder.parameters(), lr=0.01)
     
-    training_pairs = [variablesFromPair(random.choice(train_pairs),train_input_lang,train_output_lang)
-                      for i in range(n_iters)]
+    
     criterion = nn.NLLLoss()
 
     for iter in range(1, n_iters + 1):
@@ -61,8 +61,14 @@ def train(model, optimizer, train_iter, metadata, grad_clip, n_iters):
         input_variable = training_pair[0]
         target_variable = training_pair[1]
 
-        loss = train(input_variable, target_variable, encoder,
-                     decoder, encoder_optimizer, decoder_optimizer, criterion)
+        encoder_optimizer.zero_grad()
+        decoder_optimizer.zero_grad()
+
+        loss = model(input_variable, target_variable)
+
+        encoder_optimizer.step()
+        decoder_optimizer.step()
+        
         print_loss_total += loss
         plot_loss_total += loss
 
@@ -77,13 +83,18 @@ def train(model, optimizer, train_iter, metadata, grad_clip, n_iters):
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    showPlot(plot_losses)
+    showPlot(plot_losses,[encoder.n_layers,encoder.hidden_size])
+    return plot_loss_avg
 
-    return total_loss / len(train_iter)
+    
 
 
 def main():
-    
+    hidden_size = 300
+    n_layers=1
+    dropout_p=0.1
+    n_iters=5000
+    num_epochs=1
 
     cuda = torch.cuda.is_available() 
     torch.set_default_tensor_type(torch.cuda.FloatTensor if cuda else torch.FloatTensor)
@@ -97,10 +108,11 @@ def main():
     data["Question"]=data["Question"].apply(normalizeString)
     data["Answer"]=data["Answer"].apply(normalizeString) 
     train_input_lang, train_output_lang, train_pairs = prepareData(data,'questions', 'answers', False)
-
-    hidden_size = 100
-
-
+    
+    input_size=train_input_lang.n_words
+    output_size=train_output_lang.n_words
+    training_pairs = [variablesFromPair(random.choice(train_pairs),train_input_lang,train_output_lang)
+                      for i in range(n_iters)]
     model=train_model_factory(input_size,hidden_size,output_size,n_layers,dropout_p)
     
   
@@ -108,30 +120,30 @@ def main():
         model = nn.DataParallel(model, dim=1)  # if we were using batch_first we'd have to use dim=0
     print(model)  # print models summary
 
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
+    
 
     try:
         best_val_loss = None
-        for epoch in range(args.max_epochs):
+        for epoch in range(num_epochs):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, optimizer)
-            val_loss = evaluate(mode)
-            print("[Epoch=%d/%d] train_loss %f - val_loss %f time=%s " %
-                  (epoch + 1, args.max_epochs, train_loss, val_loss, datetime.now() - start), end='')
+            train_loss = train(model, training_pairs,  n_iters)
+            #val_loss = evaluate(mode)
+            #print("[Epoch=%d/%d] train_loss %f - val_loss %f time=%s " %
+            #      (epoch + 1, num_epochs, train_loss, val_loss, datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
-            if args.save_every_epoch or not best_val_loss or val_loss < best_val_loss:
-                print('(Saving model...', end='')
-                save_model(args.save_path, model, epoch + 1, train_loss, val_loss)
-                print('Done)', end='')
-                best_val_loss = val_loss
-            print()
+            # if  not best_val_loss or val_loss < best_val_loss:
+            #     print('(Saving model...', end='')
+            #     #save_model(args.save_path, model, epoch + 1, train_loss, val_loss)
+            #     print('Done)', end='')
+            #     best_val_loss = val_loss
+            # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
 
-    test_loss = evaluate(model, test_iter, metadata)
-    print("Test loss %f" % test_loss)
+    #test_loss = evaluate(model, test_iter, metadata)
+    #print("Test loss %f" % test_loss)
 
 
 if __name__ == '__main__':

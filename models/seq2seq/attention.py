@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from config import MAX_LENGTH
 
 def decoder_factory(hidden_size, output_size, n_layers, dropout_p):
     """
@@ -33,7 +34,7 @@ class AttnDecoderRNN(nn.Module):
         embedded = self.dropout(embedded)
 
         attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)))#, dim=1)
+            self.attn(torch.cat((embedded[0], hidden[0]), 1)),dim=1)
         attn_applied = torch.bmm(attn_weights.unsqueeze(0),
                                  encoder_outputs.unsqueeze(0))
 
@@ -44,7 +45,7 @@ class AttnDecoderRNN(nn.Module):
             output = F.relu(output)
             output, hidden = self.gru(output, hidden)
 
-        output = F.log_softmax(self.out(output[0]))#, dim=1)
+        output = F.log_softmax(self.out(output[0]), dim=1)
         return output, hidden, attn_weights
 
     def initHidden(self):
