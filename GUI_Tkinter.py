@@ -4,7 +4,8 @@ from predict import ChatBot
 from tkinter import LEFT,RIGHT,TOP,BOTTOM
 from PIL import Image, ImageTk
 #Calling Class for chat prediction
-ob = ChatBot()
+MODEL_PATH="seq2seq-2021-03-17-20-34-12.pt"
+ob = ChatBot(MODEL_PATH)
 
 #main display chat window 
 window = Tk()

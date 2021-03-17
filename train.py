@@ -18,8 +18,11 @@ import time
 from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence
 from src.utils import showPlot, timeSince
 import random
-from config import DATA_PATH
+from config import DATA_PATH, TEST_SIZE, PARAMS
 
+
+
+#Parameters
 
 
 
@@ -43,7 +46,7 @@ def evaluate(model, test_pairs, test_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1,plot_every=100):
+def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
     encoder=model.encoder
     decoder=model.decoder
@@ -93,16 +96,8 @@ def train(model,training_pairs, n_iters, print_every=1,plot_every=100):
 
 
 def main():
-    #Parameters
-    test_size=0.1
-    params={"hidden_size": 3,
-            "n_layers":1,
-            "dropout_p":0.5,
-            "n_iters":5,
-            "num_epochs":1
-            }
-
     #Main
+
     cuda = torch.cuda.is_available() 
     torch.set_default_tensor_type(torch.cuda.FloatTensor if cuda else torch.FloatTensor)
     device = torch.device('cuda' if cuda else 'cpu')
@@ -116,17 +111,17 @@ def main():
     data["Answer"]=data["Answer"].apply(normalizeString) 
 
     #Split into train, test set
-    train_data, test_data = train_test_split(data, test_size=test_size,random_state=11)
+    train_data, test_data = train_test_split(data, test_size=TEST_SIZE,random_state=11)
     train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
     test_input_lang, test_output_lang, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
     input_size=train_input_lang.n_words
     output_size=train_output_lang.n_words
     training_pairs = [variablesFromPair(random.choice(train_pairs),train_input_lang,train_output_lang)
-                      for i in range(params["n_iters"])]
-    model=train_model_factory(input_size,params["hidden_size"],output_size,params["n_layers"],params["dropout_p"])
+                      for i in range(PARAMS["n_iters"])]
+    model=train_model_factory(input_size,PARAMS["hidden_size"],output_size,PARAMS["n_layers"],PARAMS["dropout_p"])
     
-  
+    params=PARAMS.copy()
     if cuda:
         model = nn.DataParallel(model, dim=1)  # if we were using batch_first we'd have to use dim=0
     print(model)  # print models summary
@@ -134,13 +129,13 @@ def main():
 
     try:
         best_train_loss = 1e3
-        for epoch in range(params["num_epochs"]):
+        for epoch in range(PARAMS["num_epochs"]):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, training_pairs, params["n_iters"])
+            train_loss = train(model, training_pairs, PARAMS["n_iters"])
             #val_loss = evaluate(mode)
             print("\n\n[Epoch=%d/%d] train_loss %f time=%s " %
-                  (epoch + 1, params["num_epochs"], train_loss,datetime.now() - start), end='')
+                  (epoch + 1, PARAMS["num_epochs"], train_loss,datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
             if  train_loss < best_train_loss:
@@ -155,7 +150,7 @@ def main():
     trained_model=val_model_factory(best_model)
     test_loss = evaluate(trained_model, test_pairs, test_input_lang)
     print('\n\nSaving model...', end='')
-    now=datetime.now()
+    now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     save_model('best_models/', best_model, now)
     print('\n\nDone', end='')
     print("\n\nTest loss %f" % test_loss)
