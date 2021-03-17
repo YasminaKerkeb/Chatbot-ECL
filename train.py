@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from model import train_model_factory, val_model_factory
-from src.serialization import save_object, save_model, save_vocab
+from src.serialization import save_object, save_model, save_vocab, save_metrics
 from datetime import datetime
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
 from torch.autograd import Variable
@@ -15,9 +15,10 @@ import torch.nn.functional as F
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import time
-from src.preprocess import *
+from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence
 from src.utils import showPlot, timeSince
 import random
+from config import DATA_PATH
 
 
 
@@ -42,7 +43,7 @@ def evaluate(model, test_pairs, test_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
+def train(model,training_pairs, n_iters, print_every=1,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
     encoder=model.encoder
     decoder=model.decoder
@@ -92,12 +93,16 @@ def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
 
 
 def main():
-    hidden_size = 300
-    n_layers=3
-    dropout_p=0.1
-    n_iters=5000
-    num_epochs=3
+    #Parameters
+    test_size=0.1
+    params={"hidden_size": 3,
+            "n_layers":1,
+            "dropout_p":0.5,
+            "n_iters":5,
+            "num_epochs":1
+            }
 
+    #Main
     cuda = torch.cuda.is_available() 
     torch.set_default_tensor_type(torch.cuda.FloatTensor if cuda else torch.FloatTensor)
     device = torch.device('cuda' if cuda else 'cpu')
@@ -106,20 +111,20 @@ def main():
     print('Loading dataset...', end='', flush=True)  
 
     #Loading data
-    data=pd.read_csv('data/youssef_data.csv',encoding="latin-1",header=None,names=["Question","Answer"]) 
+    data=pd.read_csv(DATA_PATH ,encoding="latin-1",header=None,names=["Question","Answer"]) 
     data["Question"]=data["Question"].apply(normalizeString)
     data["Answer"]=data["Answer"].apply(normalizeString) 
 
     #Split into train, test set
-    train_data, test_data = train_test_split(data, test_size=0.1,random_state=11)
+    train_data, test_data = train_test_split(data, test_size=test_size,random_state=11)
     train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
     test_input_lang, test_output_lang, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
     input_size=train_input_lang.n_words
     output_size=train_output_lang.n_words
     training_pairs = [variablesFromPair(random.choice(train_pairs),train_input_lang,train_output_lang)
-                      for i in range(n_iters)]
-    model=train_model_factory(input_size,hidden_size,output_size,n_layers,dropout_p)
+                      for i in range(params["n_iters"])]
+    model=train_model_factory(input_size,params["hidden_size"],output_size,params["n_layers"],params["dropout_p"])
     
   
     if cuda:
@@ -129,28 +134,35 @@ def main():
 
     try:
         best_train_loss = 1e3
-        for epoch in range(num_epochs):
+        for epoch in range(params["num_epochs"]):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, training_pairs, n_iters)
+            train_loss = train(model, training_pairs, params["n_iters"])
             #val_loss = evaluate(mode)
             print("\n\n[Epoch=%d/%d] train_loss %f time=%s " %
-                  (epoch + 1, num_epochs, train_loss,datetime.now() - start), end='')
+                  (epoch + 1, params["num_epochs"], train_loss,datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
             if  train_loss < best_train_loss:
-                print('\n\nSaving model...', end='')
-                save_model('best_models/', model, epoch + 1, train_loss)
-                print('\n\nDone', end='')
+                params['train_loss']=train_loss
                 best_train_loss = train_loss
                 best_model=model
+
             # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
     
     trained_model=val_model_factory(best_model)
     test_loss = evaluate(trained_model, test_pairs, test_input_lang)
+    print('\n\nSaving model...', end='')
+    now=datetime.now()
+    save_model('best_models/', best_model, now)
+    print('\n\nDone', end='')
     print("\n\nTest loss %f" % test_loss)
+    print('\n\nSaving metrics...', end='')
+    params["test_loss"]=test_loss
+    save_metrics({**{"datetime":now},**params})
+    print('\n\nDone\n\n', end='')
 
 
 

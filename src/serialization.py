@@ -2,6 +2,7 @@ import torch
 import pickle
 import os
 from config import MODEL_FORMAT
+import pandas as pd
 
 
 def ensure_dir_exists(path):
@@ -31,6 +32,12 @@ def save_vocab(vocab, path):
     save_object(vocab, path)
 
 
-def save_model(dir_path, model, epoch, train_loss):
+def save_model(dir_path, model,  time):
     ensure_dir_exists(dir_path)
-    torch.save(model.state_dict(), dir_path + os.path.sep + (MODEL_FORMAT % (epoch, train_loss)))
+    torch.save(model.state_dict(), dir_path + os.path.sep + (MODEL_FORMAT % (time)))
+
+def save_metrics(params):
+    df=pd.read_csv('metrics/metrics.csv')
+    df = df.append(params, ignore_index = True) 
+    df.to_csv('metrics/metrics.csv',index=False,header=True)
+    
