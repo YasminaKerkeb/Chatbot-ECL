@@ -7,6 +7,9 @@ teacher_forcing_ratio = 0.5
 PAD_token= '<pad>'  # pad token
 LSTM = 'LSTM'
 GRU = 'GRU'
-MODEL_FORMAT = "seq2seq-%d-%f.pt"
+MODEL_FORMAT = "seq2seq-%d-%f.pkl"
 MODEL_START_FORMAT = "seq2seq-%d"
 
+hidden_size = 300
+n_layers=3
+dropout_p=0.1

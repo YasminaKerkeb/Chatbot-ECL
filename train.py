@@ -42,7 +42,7 @@ def evaluate(model, test_pairs, test_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1,plot_every=1):
+def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
     encoder=model.encoder
     decoder=model.decoder
@@ -92,11 +92,11 @@ def train(model,training_pairs, n_iters, print_every=1,plot_every=1):
 
 
 def main():
-    hidden_size = 5
-    n_layers=1
+    hidden_size = 300
+    n_layers=3
     dropout_p=0.1
-    n_iters=10
-    num_epochs=1
+    n_iters=5000
+    num_epochs=3
 
     cuda = torch.cuda.is_available() 
     torch.set_default_tensor_type(torch.cuda.FloatTensor if cuda else torch.FloatTensor)
@@ -111,7 +111,7 @@ def main():
     data["Answer"]=data["Answer"].apply(normalizeString) 
 
     #Split into train, test set
-    train_data, test_data = train_test_split(data, test_size=0.2)
+    train_data, test_data = train_test_split(data, test_size=0.1,random_state=11)
     train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
     test_input_lang, test_output_lang, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
@@ -147,9 +147,11 @@ def main():
             # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
+    
     trained_model=val_model_factory(best_model)
     test_loss = evaluate(trained_model, test_pairs, test_input_lang)
     print("\n\nTest loss %f" % test_loss)
+
 
 
 if __name__ == '__main__':
