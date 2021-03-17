@@ -4,7 +4,7 @@ import random
 import string
 from config import SOS_token, EOS_token, MAX_LENGTH
 from torch.autograd import Variable
-from preprocess import variableFromSentence
+from src.preprocess import variableFromSentence
 from .sampling import GreedySampler, RandomSampler, BeamSearch
 
 

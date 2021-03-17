@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from model import train_model_factory, val_model_factory
-from serialization import save_object, save_model, save_vocab
+from src.serialization import save_object, save_model, save_vocab
 from datetime import datetime
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
 from torch.autograd import Variable
@@ -15,8 +15,8 @@ import torch.nn.functional as F
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import time
-from preprocess import *
-from utils import showPlot, timeSince
+from src.preprocess import *
+from src.utils import showPlot, timeSince
 import random
 
 
