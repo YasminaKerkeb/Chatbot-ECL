@@ -42,7 +42,7 @@ def evaluate(model, test_pairs, test_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
+def train(model,training_pairs, n_iters, print_every=1,plot_every=1):
     model.train()  # put models in train mode (this is important because of dropout)
     encoder=model.encoder
     decoder=model.decoder
@@ -85,13 +85,14 @@ def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
             plot_loss_total = 0
 
     showPlot(plot_losses,[encoder.n_layers,encoder.hidden_size])
-    return plot_loss_avg
+    
+    return print_loss_avg
 
     
 
 
 def main():
-    hidden_size = 300
+    hidden_size = 5
     n_layers=1
     dropout_p=0.1
     n_iters=10
@@ -132,23 +133,23 @@ def main():
             start = datetime.now()
             # calculate train and val loss
             train_loss = train(model, training_pairs, n_iters)
-            trained_model=val_model_factory(trained_model)
             #val_loss = evaluate(mode)
-            print("[Epoch=%d/%d] train_loss %f time=%s " %
+            print("\n\n[Epoch=%d/%d] train_loss %f time=%s " %
                   (epoch + 1, num_epochs, train_loss,datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
             if  train_loss < best_train_loss:
-                print('(Saving model...', end='')
+                print('\n\nSaving model...', end='')
                 save_model('best_models/', model, epoch + 1, train_loss)
-                print('Done)', end='')
+                print('\n\nDone', end='')
                 best_train_loss = train_loss
+                best_model=model
             # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
-    
-    test_loss = evaluate(model, test_pairs, test_input_lang)
-    print("Test loss %f" % test_loss)
+    trained_model=val_model_factory(best_model)
+    test_loss = evaluate(trained_model, test_pairs, test_input_lang)
+    print("\n\nTest loss %f" % test_loss)
 
 
 if __name__ == '__main__':

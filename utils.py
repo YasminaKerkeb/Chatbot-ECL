@@ -15,7 +15,7 @@ def showPlot(points,args):
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
     plt.savefig('plots/loss_curve_'+str(args[0])+'_'+str(args[1]))
-    plt.show()
+    
     
     
 def asMinutes(s):

@@ -93,7 +93,7 @@ class Seq2SeqTrain(nn.Module):
         
 
 
-   
+
         return loss.item() / target_length
         
 
@@ -121,8 +121,8 @@ class Seq2SeqPredict(nn.Module):
     def __init__(self, pretrained_model):
         super(Seq2SeqPredict, self).__init__()
         self.model=pretrained_model
-        self.encoder = model.encoder
-        self.decoder = model.decoder
+        self.encoder = pretrained_model.encoder
+        self.decoder = pretrained_model.decoder
       
     def forward(self,question,train_input_lang,train_output_lang):
         
@@ -175,14 +175,14 @@ class Seq2SeqPredict(nn.Module):
 
         input_length = question.size()[0]
         target_length = answer.size()[0]
-        encoder_hidden = encoder.initHidden()
+        encoder_hidden = self.encoder.initHidden()
 
 
-        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, encoder.hidden_size))
+        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, self.encoder.hidden_size))
         encoder_outputs = encoder_outputs
 
         for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(question[ei],
+            encoder_output, encoder_hidden = self.encoder(question[ei],
                                                     encoder_hidden)
             encoder_outputs[ei] = encoder_outputs[ei] + encoder_output[0][0]
 
@@ -197,7 +197,7 @@ class Seq2SeqPredict(nn.Module):
 
         for di in range(target_length):
 
-            decoder_output, decoder_hidden, decoder_attention = decoder(
+            decoder_output, decoder_hidden, decoder_attention = self.decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             #loss += criterion(decoder_output, target_variable[di])
             topv, topi = decoder_output.data.topk(1)
