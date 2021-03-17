@@ -10,6 +10,10 @@ def train_model_factory(input_size,hidden_size,output_size,n_layers,dropout_p):
     decoder = decoder_factory(hidden_size, output_size,n_layers, dropout_p)
     return Seq2SeqTrain(encoder, decoder)
 
+def val_model_factory(trained_model):
+    return Seq2SeqPredict(trained_model)
+
+
 
 def predict_model_factory(args, metadata, model_path, field):
     train_model = train_model_factory(args, metadata)

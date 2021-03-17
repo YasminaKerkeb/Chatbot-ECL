@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
-from model import train_model_factory
+from model import train_model_factory, val_model_factory
 from serialization import save_object, save_model, save_vocab
 from datetime import datetime
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
@@ -13,8 +13,9 @@ from torch.autograd import Variable
 from torch import optim
 import torch.nn.functional as F
 import pandas as pd
+from sklearn.model_selection import train_test_split
 import time
-from preprocess import variablesFromPair, prepareData, normalizeString
+from preprocess import *
 from utils import showPlot, timeSince
 import random
 
@@ -23,22 +24,22 @@ import random
 
 
 
-def evaluate(model, val_iter, metadata):
+def evaluate(model, test_pairs, test_input_lang):
     model.eval()  # put models in eval mode (this is important because of dropout)
-
-    total_loss = 0
+    print_loss_total=0
     with torch.no_grad():
-        for batch in val_iter:
-            # calculate models predictions
-            question, answer = batch.question, batch.answer
-            logits = model(question, answer)
-
-            # calculate batch loss
-            loss = F.cross_entropy(logits.view(-1, metadata.vocab_size), answer[1:].view(-1),
-                                   ignore_index=metadata.padding_idx)  # answer[1:] skip <sos> token
-            total_loss += loss.item()
-
-    return total_loss / len(val_iter)
+        for iter in range(len(test_pairs)):
+            test_pair = test_pairs[iter]
+            input_variable = test_pair[0]
+            target_variable = test_pair[1]
+            input_variable = variableFromSentence(test_input_lang, input_variable)
+            target_variable = variableFromSentence(test_input_lang, target_variable)
+            loss=model.test(input_variable, target_variable)
+            
+            print_loss_total += loss
+        
+    return print_loss_total/len(test_pairs)
+    
 
 
 def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
@@ -93,7 +94,7 @@ def main():
     hidden_size = 300
     n_layers=1
     dropout_p=0.1
-    n_iters=5000
+    n_iters=10
     num_epochs=1
 
     cuda = torch.cuda.is_available() 
@@ -107,7 +108,11 @@ def main():
     data=pd.read_csv('data/youssef_data.csv',encoding="latin-1",header=None,names=["Question","Answer"]) 
     data["Question"]=data["Question"].apply(normalizeString)
     data["Answer"]=data["Answer"].apply(normalizeString) 
-    train_input_lang, train_output_lang, train_pairs = prepareData(data,'questions', 'answers', False)
+
+    #Split into train, test set
+    train_data, test_data = train_test_split(data, test_size=0.2)
+    train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
+    test_input_lang, test_output_lang, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
     input_size=train_input_lang.n_words
     output_size=train_output_lang.n_words
@@ -120,30 +125,30 @@ def main():
         model = nn.DataParallel(model, dim=1)  # if we were using batch_first we'd have to use dim=0
     print(model)  # print models summary
 
-    
 
     try:
-        best_val_loss = None
+        best_train_loss = 1e3
         for epoch in range(num_epochs):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, training_pairs,  n_iters)
+            train_loss = train(model, training_pairs, n_iters)
+            trained_model=val_model_factory(trained_model)
             #val_loss = evaluate(mode)
-            #print("[Epoch=%d/%d] train_loss %f - val_loss %f time=%s " %
-            #      (epoch + 1, num_epochs, train_loss, val_loss, datetime.now() - start), end='')
+            print("[Epoch=%d/%d] train_loss %f time=%s " %
+                  (epoch + 1, num_epochs, train_loss,datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
-            # if  not best_val_loss or val_loss < best_val_loss:
-            #     print('(Saving model...', end='')
-            #     #save_model(args.save_path, model, epoch + 1, train_loss, val_loss)
-            #     print('Done)', end='')
-            #     best_val_loss = val_loss
+            if  train_loss < best_train_loss:
+                print('(Saving model...', end='')
+                save_model('best_models/', model, epoch + 1, train_loss)
+                print('Done)', end='')
+                best_train_loss = train_loss
             # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
-
-    #test_loss = evaluate(model, test_iter, metadata)
-    #print("Test loss %f" % test_loss)
+    
+    test_loss = evaluate(model, test_pairs, test_input_lang)
+    print("Test loss %f" % test_loss)
 
 
 if __name__ == '__main__':

@@ -31,6 +31,6 @@ def save_vocab(vocab, path):
     save_object(vocab, path)
 
 
-def save_model(dir_path, model, epoch, train_loss, val_loss):
+def save_model(dir_path, model, epoch, train_loss):
     ensure_dir_exists(dir_path)
-    torch.save(model.state_dict(), dir_path + os.path.sep + (MODEL_FORMAT % (epoch, train_loss, val_loss)))
+    torch.save(model.state_dict(), dir_path + os.path.sep + (MODEL_FORMAT % (epoch, train_loss)))
