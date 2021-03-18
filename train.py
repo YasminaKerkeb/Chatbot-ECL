@@ -136,7 +136,7 @@ def main():
             # calculate train and val loss
             train_loss = train(model, training_pairs, PARAMS["n_iters"])
             #val_loss = evaluate(mode)
-            print("\n\n[Epoch=%d/%d] train_loss %f time=%s " %
+            print("\n\n[Epoch=%d/%d] train_loss %f time=%s \n\n" %
                   (epoch + 1, PARAMS["num_epochs"], train_loss,datetime.now() - start), end='')
 
             # save models if models achieved best val loss (or save every epoch is selected)
@@ -159,21 +159,7 @@ def main():
     print('\n\nSaving metrics...', end='')
     params["test_loss"]=test_loss
     save_metrics({**{"datetime":now},**params})
-    input_text="combien doit durer le stage ? Qui traite le dossier d'élève ? Comment sont évalués les cours ?"
-    trained_model.eval()  # put models in eval mode (this is important because of dropout)
-   
-    with torch.no_grad():
-        sentences = [s.strip() for s in re.split('[\.\,\?\!]' , input_text)]
-        sentences = sentences[:-1]
-        print(sentences)
-        if sentences==[]:
-            sentences=[input_text]
-        for sentence in sentences : 
-            trimmed_sentence= TrimWordsSentence(normalizeString(sentence))
-            print(trimmed_sentence)
-            answer_words, _ =trained_model(trimmed_sentence,train_input_lang,train_output_lang)
-            answer = ' '.join(answer_words)
-            print(answer)
+    print('\n\nDone ')
     
 
 
