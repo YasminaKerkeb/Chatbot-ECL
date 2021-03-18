@@ -1,8 +1,10 @@
 from model import train_model_factory, val_model_factory, predict_model_factory
-from src.preprocess import normalizeString, prepareData
+from src.preprocess import normalizeString, prepareData, TrimWordsSentence
 from sklearn.model_selection import train_test_split
 from config import DATA_PATH, TEST_SIZE
 import pandas as pd
+import re
+import torch
 
 
 class ChatBot(object):
@@ -12,13 +14,21 @@ class ChatBot(object):
         input_size=self.train_input_lang.n_words
         output_size=self.train_output_lang.n_words
         self.model=predict_model_factory(model_path,input_size,output_size)
-        print('Bonjour ! Comment puis-je vous aider ?')
+        self.model.eval()
         
-
+        
     def reply(self, input_text):
-        answer_words, _ =model(input_text,self.train_input_lang,self.train_output_lang)
-        answer = ' '.join(answer_words)
-
+        with torch.no_grad():
+            sentences = [s.strip() for s in re.split('[\.\,\?\!]' , input_text)]
+            sentences = sentences[:-1]
+            if sentences==[]:
+                sentences=[input_text]
+            for sentence in sentences : 
+                trimmed_sentence= TrimWordsSentence(normalizeString(sentence))
+                print(trimmed_sentence)
+                answer_words, _ =self.model(trimmed_sentence,self.train_input_lang,self.train_output_lang)
+                answer = ' '.join(answer_words)
+            
         return answer
 
     def test_run(self,ques):

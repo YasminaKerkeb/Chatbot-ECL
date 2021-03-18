@@ -16,6 +16,6 @@ PARAMS={"hidden_size": 100,
         "n_layers":3,
         "dropout_p":0.1,
         "n_iters":5000,
-        "num_epochs":2
+        "num_epochs":3
         }
 

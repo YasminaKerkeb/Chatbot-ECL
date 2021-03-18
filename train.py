@@ -1,6 +1,8 @@
 import os
 import argparse
 import torch
+import copy
+import re
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -15,7 +17,7 @@ import torch.nn.functional as F
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import time
-from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence
+from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence, TrimWordsSentence
 from src.utils import showPlot, timeSince
 import random
 from config import DATA_PATH, TEST_SIZE, PARAMS
@@ -28,7 +30,7 @@ from config import DATA_PATH, TEST_SIZE, PARAMS
 
 
 
-def evaluate(model, test_pairs, test_input_lang):
+def evaluate(model, test_pairs, train_input_lang):
     model.eval()  # put models in eval mode (this is important because of dropout)
     print_loss_total=0
     with torch.no_grad():
@@ -36,8 +38,8 @@ def evaluate(model, test_pairs, test_input_lang):
             test_pair = test_pairs[iter]
             input_variable = test_pair[0]
             target_variable = test_pair[1]
-            input_variable = variableFromSentence(test_input_lang, input_variable)
-            target_variable = variableFromSentence(test_input_lang, target_variable)
+            input_variable = variableFromSentence(train_input_lang, input_variable)
+            target_variable = variableFromSentence(train_input_lang, target_variable)
             loss=model.test(input_variable, target_variable)
             
             print_loss_total += loss
@@ -113,7 +115,7 @@ def main():
     #Split into train, test set
     train_data, test_data = train_test_split(data, test_size=TEST_SIZE,random_state=11)
     train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
-    test_input_lang, test_output_lang, test_pairs = prepareData(test_data,'questions', 'answers', False)
+    _, _, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
     input_size=train_input_lang.n_words
     output_size=train_output_lang.n_words
@@ -141,14 +143,14 @@ def main():
             if  train_loss < best_train_loss:
                 params['train_loss']=train_loss
                 best_train_loss = train_loss
-                best_model=model
+                best_model=copy.deepcopy(model)
 
             # print()
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
     
     trained_model=val_model_factory(best_model)
-    test_loss = evaluate(trained_model, test_pairs, test_input_lang)
+    test_loss = evaluate(trained_model, test_pairs, train_input_lang)
     print('\n\nSaving model...', end='')
     now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     save_model('best_models/', best_model, now)
@@ -157,7 +159,22 @@ def main():
     print('\n\nSaving metrics...', end='')
     params["test_loss"]=test_loss
     save_metrics({**{"datetime":now},**params})
-    print('\n\nDone\n\n', end='')
+    input_text="combien doit durer le stage ? Qui traite le dossier d'élève ? Comment sont évalués les cours ?"
+    trained_model.eval()  # put models in eval mode (this is important because of dropout)
+   
+    with torch.no_grad():
+        sentences = [s.strip() for s in re.split('[\.\,\?\!]' , input_text)]
+        sentences = sentences[:-1]
+        print(sentences)
+        if sentences==[]:
+            sentences=[input_text]
+        for sentence in sentences : 
+            trimmed_sentence= TrimWordsSentence(normalizeString(sentence))
+            print(trimmed_sentence)
+            answer_words, _ =trained_model(trimmed_sentence,train_input_lang,train_output_lang)
+            answer = ' '.join(answer_words)
+            print(answer)
+    
 
 
 

@@ -69,7 +69,6 @@ def prepareData(data,questions, answers, reverse=False):
         print('%s (%d) -> %s (%d)' % (pair[0],len(pair[0].split()),pair[1],len(pair[1].split())))  
     
     pairs = filterPairs(pairs)
-    
     print('')
     print("Trimmed to %s sentence pairs" % len(pairs))
     print("Counting words...")
@@ -106,6 +105,7 @@ def indexesFromSentence(lang, sentence):
         try:
             indexes.append(lang.word2index[word] )
         except KeyError:
+                "Error"
                 pass
     return indexes
 
