@@ -1,3 +1,1 @@
 # Chatbot ECL
-
-## Content
