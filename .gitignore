@@ -1,3 +1,9 @@
+# data folders
 data/
 
+# python cache
 **/__pycache__
+
+# models and vscode files
+.vscode/
+*.bin

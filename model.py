@@ -18,8 +18,8 @@ def val_model_factory(trained_model):
 
 def predict_model_factory(model_path):
     train_model = torch.load("best_models/"+model_path)
-    return Seq2SeqPredict(train_model.encoder, train_model.decoder)
-
+    return Seq2SeqPredict(train_model)
+    
 
 def get_state_dict(model_path):
     # load state dict and map it to current storage (CPU or GPU)

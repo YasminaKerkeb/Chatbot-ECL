@@ -119,3 +119,7 @@ def variablesFromPair(pair,input_lang,output_lang):
     input_variable = variableFromSentence(input_lang, pair[0])
     target_variable = variableFromSentence(output_lang, pair[1])
     return (input_variable, target_variable)
+
+
+if __name__ == '__main__':
+    print(readLangs())
