@@ -120,24 +120,25 @@ class Seq2SeqPredict(nn.Module):
     """
     def __init__(self, pretrained_model):
         super(Seq2SeqPredict, self).__init__()
-        self.model=pretrained_model
         self.encoder = pretrained_model.encoder
         self.decoder = pretrained_model.decoder
       
     def forward(self,question,train_input_lang,train_output_lang):
         
+        
         input_variable = variableFromSentence(train_input_lang, question)
+        
         input_length = input_variable.size()[0]
 
-        encoder_hidden = encoder.initHidden()
-
-        encoder_outputs = Variable(torch.zeros(MAX_LENGTH), self.encoder.hidden_size)
+        encoder_hidden = self.encoder.initHidden()
+        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, self.encoder.hidden_size))
         encoder_outputs = encoder_outputs
-
+        
         for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(input_variable[ei],
+            encoder_output, encoder_hidden = self.encoder(input_variable[ei],
                                                     encoder_hidden)
             encoder_outputs[ei] = encoder_outputs[ei] + encoder_output[0][0]
+            
 
         decoder_input = Variable(torch.LongTensor([[SOS_token]]))  # SOS
         decoder_input = decoder_input
@@ -149,9 +150,7 @@ class Seq2SeqPredict(nn.Module):
 
         for di in range(MAX_LENGTH):
             
-            
-
-            decoder_output, decoder_hidden, decoder_attention = decoder(
+            decoder_output, decoder_hidden, decoder_attention = self.decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             decoder_attentions[di] = decoder_attention.data
 

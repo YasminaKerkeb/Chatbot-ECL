@@ -4,12 +4,18 @@ from predict import ChatBot
 from tkinter import LEFT,RIGHT,TOP,BOTTOM
 from PIL import Image, ImageTk
 #Calling Class for chat prediction
-ob = ChatBot()
+MODEL_PATH="seq2seq-2021-03-18-02-27-28.pt"
+ob = ChatBot(MODEL_PATH)
 
 #main display chat window 
 window = Tk()
 window.title("ChatBot Centrale")
-window.geometry('550x450')
+window.geometry('650x550')
+
+
+# photo = PhotoImage(file = "img/logo_ecl.gif")
+# w = Label(window, image=photo)
+# w.pack()
 
 #top frame to display the chat history
 frame1 = Frame(window, class_="TOP")
