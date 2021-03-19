@@ -12,7 +12,7 @@
 
 **Model evaluation on Chatbot**
 
-* Select trained model in `best_models`
+* Select trained model in `best_models` and put the correct name in `GUI_Tkinter.py` 
 
 * Check the associated hyperparameters in `metrics.csv`
 
