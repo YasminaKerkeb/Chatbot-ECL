@@ -12,7 +12,7 @@
 
 **Model evaluation on Chatbot**
 
-* Select trained model in `best_models``
+* Select trained model in `best_models`
 
 * Check the associated hyperparameters in `metrics.csv`
 
