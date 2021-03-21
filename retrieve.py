@@ -30,28 +30,32 @@ def answer_question(question, s2v_model, w2v_model, data, similarity, k=1):
         Y_indexes = list(Y.index)
         responses = Y.to_numpy()[-k:]
 
-        for i, rep in enumerate(responses):
-            result += "Similarity : {} - {}\n".format(float(X[Y_indexes[-k+i]]), rep)
-        
     else:
-        resilt += 'seqvec embedding dimensions {} \n'\
+        result += 'seqvec embedding dimensions {} \n'\
                   'model embedding dimensions {}'.format(query_vec.shape, embed_questions.shape)
 
-    return result
+    return indexes[0:k], responses[0:k]
+
+
+
+    
 
 
 if __name__ == '__main__':
     
     ### Read data
-    path = "../Data/youssef_data.csv"
+    print('Loading Data...')
+    path = "data/youssef_data.csv"
     data = pd.read_csv(path, encoding="latin-1", header=None, names=["Question","Answer"]) 
     data["Question"]=data["Question"].apply(normalizeString)
     data["Answer"]=data["Answer"].apply(normalizeString) 
     
+    print('Preprocessing...')
     ### Question
     s2v = sent2vec(data, 'cooc_2')
     w2v = s2v.get_model()
 
+    print('Input question...')
     ### Answer question
     input_question = ""
     while input_question not in ['quit', 'q']: 

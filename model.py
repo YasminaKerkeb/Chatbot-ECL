@@ -2,8 +2,10 @@ import torch
 from models.seq2seq.encoder import encoder_factory
 from models.seq2seq.attention import decoder_factory
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
+from models.multiseq2seq.model import MultiSeq2SeqTrain, MultiSeq2SeqPredict
 from collections import OrderedDict
 from config import PARAMS
+from retrieve import answer_question
 
 
 
@@ -27,3 +29,9 @@ def get_state_dict(model_path):
     state_dict = torch.load('best_models/'+model_path, map_location=lambda storage, loc: storage)
 
     return state_dict
+
+
+def train_multi_model_factory(input_size,hidden_size,output_size,n_layers,dropout_p):
+    encoder = encoder_factory(input_size,hidden_size,n_layers)
+    decoder = decoder_factory(hidden_size, output_size,n_layers, dropout_p)
+    return MultiSeq2SeqTrain(encoder, decoder)

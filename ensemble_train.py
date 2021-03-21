@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
-from model import train_model_factory, val_model_factory
+from model import train_model_factory, val_model_factory, train_multi_model_factory
 from src.serialization import save_object, save_model, save_vocab, save_metrics
 from datetime import datetime
 from models.seq2seq.model import Seq2SeqTrain, Seq2SeqPredict
@@ -22,7 +22,9 @@ from src.utils import showPlot, timeSince
 
 import random
 from config import DATA_PATH, TEST_SIZE, PARAMS
-
+from models.retrieve.similarities import cosine_sim, euclidian_sim
+from models.retrieve.sent2vec import sent2vec
+from retrieve import answer_question
 
 
 #Parameters
@@ -53,16 +55,16 @@ def evaluate(model, test_pairs, train_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
+def train(model,training_pairs, n_iters, s2v_model, w2v_model, train_data, data_idx, similarity=cosine_sim, print_every=1000,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
-    encoder=model.encoder
+    encoders=model.encoders
     decoder=model.decoder
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.SGD(model.encoder.parameters(), lr=0.01)
+    encoder_optimizer = optim.SGD(model.encoders[0].parameters(), lr=0.01)
     decoder_optimizer = optim.SGD(model.decoder.parameters(), lr=0.01)
     
     
@@ -76,7 +78,11 @@ def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
         encoder_optimizer.zero_grad()
         decoder_optimizer.zero_grad()
 
-        loss = model(input_variable, target_variable)
+        
+        rep_indexes, retrieve_candidates=answer_question(train_data.iloc[data_idx[iter-1]]["Question"], s2v_model, w2v_model, train_data, similarity, k=3)
+        list_idx=list(set(rep_indexes).intersection(set(data_idx)))
+        retrieve_candidates=[training_pairs[j][1] for j in list_idx]
+        loss = model(input_variable, target_variable, retrieve_candidates)
 
         encoder_optimizer.step()
         decoder_optimizer.step()
@@ -95,7 +101,7 @@ def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    showPlot(plot_losses,[encoder.n_layers,encoder.hidden_size])
+    showPlot(plot_losses,[encoders[0].n_layers,encoders[0].hidden_size])
     
     return print_loss_avg
 
@@ -117,16 +123,31 @@ def main():
     data["Question"]=data["Question"].apply(normalizeString)
     data["Answer"]=data["Answer"].apply(normalizeString) 
 
+    ### Question
+    s2v = sent2vec(data, 'cooc_2')
+    w2v = s2v.get_model()
+
+
     #Split into train, test set
     train_data, test_data = train_test_split(data, test_size=TEST_SIZE,random_state=11)
-    train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
+    train_input_lang, train_output_lang, train_pairs = prepareData(data,'questions', 'answers', False)
     _, _, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
-    input_size=train_input_lang.n_words
+    input_size=max(train_input_lang.n_words,train_output_lang.n_words)
+    print(input_size)
     output_size=train_output_lang.n_words
-    training_pairs = [variablesFromPair(random.choice(train_pairs),train_input_lang,train_output_lang)
-                      for i in range(PARAMS["n_iters"])]
-    model=train_model_factory(input_size,PARAMS["hidden_size"],output_size,PARAMS["n_layers"],PARAMS["dropout_p"])
+    #Create training pairs for a certain number of iterations
+    training_pairs = []
+    data_idx=[]
+    n=len(train_pairs)
+    for i in range(PARAMS["n_iters"]):
+        idx=random.choice(range(n))
+        pair=variablesFromPair(train_pairs[idx],train_input_lang,train_output_lang)
+        training_pairs.append(pair)
+        data_idx.append(idx)
+   
+    #Initialise model
+    model=train_multi_model_factory(input_size,PARAMS["hidden_size"],output_size,PARAMS["n_layers"],PARAMS["dropout_p"])
     
     params=PARAMS.copy()
     if cuda:
@@ -139,7 +160,7 @@ def main():
         for epoch in range(PARAMS["num_epochs"]):
             start = datetime.now()
             # calculate train and val loss
-            train_loss = train(model, training_pairs, PARAMS["n_iters"])
+            train_loss = train(model, training_pairs, PARAMS["n_iters"],s2v, w2v, data,data_idx)
             #val_loss = evaluate(mode)
             print("\n\n[Epoch=%d/%d] train_loss %f time=%s \n\n" %
                   (epoch + 1, PARAMS["num_epochs"], train_loss,datetime.now() - start), end='')
@@ -154,17 +175,12 @@ def main():
     except (KeyboardInterrupt, BrokenPipeError):
         print('[Ctrl-C] Training stopped.')
     
-    trained_model=val_model_factory(best_model)
-    test_loss = evaluate(trained_model, test_pairs, train_input_lang)
-    print('\n\nSaving model...', end='')
+    #trained_model=val_model_factory(best_model)
+    #test_loss = evaluate(trained_model, test_pairs, train_input_lang)
+    #print('\n\nSaving model...', end='')
     now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     save_model('best_models/', best_model, now)
     print('\n\nDone', end='')
-    print("\n\nTest loss %f" % test_loss)
-    print('\n\nSaving metrics...', end='')
-    params["test_loss"]=test_loss
-    save_metrics({**{"datetime":now},**params})
-    print('\n\nDone ')
     
 
 

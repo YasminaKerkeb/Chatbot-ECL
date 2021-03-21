@@ -4,16 +4,6 @@ from torch.autograd import Variable
 from torch import optim
 import torch.nn.functional as F
 
-def decoder_factory(args, metadata):
-    """
-    Returns instance of ``Decoder`` based on provided args.
-    """
-    # TODO what if attention type is 'none' ?
-    embed = embeddings_factory(args, metadata)
-    attn = attention_factory(args)
-    init = decoder_init_factory(args)
-    return decoder_map[args.decoder_type](args, embed, attn, init, metadata)
-
 
 
 

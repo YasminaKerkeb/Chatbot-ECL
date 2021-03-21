@@ -5,7 +5,8 @@ from tkinter import LEFT,RIGHT,TOP,BOTTOM
 from PIL import Image, ImageTk
 #Calling Class for chat prediction
 MODEL_PATH="seq2seq-2021-03-18-03-58-16.pt"
-ob = ChatBot(MODEL_PATH)
+MODE="generate"
+ob = ChatBot(MODEL_PATH,MODE)
 
 #main display chat window 
 window = Tk()
@@ -51,6 +52,8 @@ def clicked(event):
     pr="Human : " + res + "\n" + "ChatBot : " + ans + "\n"
     #the state of the textarea is normalto write the text to the top area in the interface
     textarea.config(state=NORMAL)
+    textarea.insert(END,pr)
+    pr="ChatBot : " + "Etes vous satisfait de cette réponse ?" + "\n"
     textarea.insert(END,pr)
     #it is again disabled to avoid the user modifications in the history
     textarea.config(state=DISABLED)
