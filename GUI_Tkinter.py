@@ -5,7 +5,7 @@ from tkinter import LEFT,RIGHT,TOP,BOTTOM
 from PIL import Image, ImageTk
 #Calling Class for chat prediction
 MODEL_PATH="seq2seq-2021-03-18-03-58-16.pt"
-MODE="generate"
+MODE="retrieve"
 ob = ChatBot(MODEL_PATH,MODE)
 
 #main display chat window 
@@ -48,13 +48,22 @@ def clicked(event):
     relative_position_of_scrollbar = vsb.get()[1]
     res =txt.get() 
     #function call
-    ans = ob.test_run(res)
-    pr="Human : " + res + "\n" + "ChatBot : " + ans + "\n"
-    #the state of the textarea is normalto write the text to the top area in the interface
-    textarea.config(state=NORMAL)
-    textarea.insert(END,pr)
-    pr="ChatBot : " + "Etes vous satisfait de cette réponse ?" + "\n"
-    textarea.insert(END,pr)
+    if res not in ["Non"]:
+        ans = ob.test_run(res)
+        pr="Human : " + res + "\n" + "ChatBot : " + ans + "\n"
+        #the state of the textarea is normalto write the text to the top area in the interface
+        textarea.config(state=NORMAL)
+        textarea.insert(END,pr)
+        pr="ChatBot : " + "Etes vous satisfait de cette réponse ?" + "\n"
+        textarea.insert(END,pr)
+    else:
+        topic, ans=ob.get_topics_data(res)
+        print(ans)
+        pr="Human : " + res + "\n" + "ChatBot : Résultat pour le sujet " + topic+":\n" +ans + "\n"
+        #the state of the textarea is normalto write the text to the top area in the interface
+        textarea.config(state=NORMAL)
+        textarea.insert(END,pr)
+
     #it is again disabled to avoid the user modifications in the history
     textarea.config(state=DISABLED)
     txt.delete(0,END)

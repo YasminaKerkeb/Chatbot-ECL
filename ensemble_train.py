@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 import time
 from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence, TrimWordsSentence
 from src.utils import showPlot, timeSince
-
+from nltk.translate.bleu_score import corpus_bleu, sentence_bleu, SmoothingFunction
 import random
 from config import DATA_PATH, TEST_SIZE, PARAMS
 from models.retrieve.similarities import cosine_sim, euclidian_sim
@@ -33,13 +33,43 @@ from retrieve import answer_question
 
 
 
-def evaluate(model, test_pairs, train_input_lang):
+def generate_answer(model,input_text,train_input_lang,train_output_lang):
+    model.eval()
+    with torch.no_grad():
+        sentences = [s.strip() for s in re.split('[\.\,\?\!]' , input_text)]
+        sentences = sentences[:-1]
+        if sentences==[]:
+            sentences=[input_text]
+        for sentence in sentences : 
+            trimmed_sentence= TrimWordsSentence(normalizeString(sentence))
+            
+            answer_words, _ =model(trimmed_sentence,train_input_lang,train_output_lang)
+            answer = ' '.join(answer_words)
+    
+    return answer[:-1]
+
+
+def bleu_score(model,true_answer,gen_answer,n=4):
     """
-    Evaluate model on question answer pairs
+    Compute BLEU score
+    """
+    weights = [1.0/n]*n + [0.0]*(4-n)
+    cc=SmoothingFunction()
+    true_answer=' '.join([true_answer]).split()
+    gen_answer=' '.join([gen_answer]).split()
+    return sentence_bleu(true_answer, gen_answer, weights,smoothing_function=cc.method4)
+
+
+
+def evaluate(model, test_data, train_input_lang, train_output_lang):
+    """
+    Evaluate loss model on question answer pairs
 
     """
+    _, _, test_pairs = prepareData(test_data,'questions', 'answers', False)
     model.eval()  # put models in eval mode (this is important because of dropout)
     print_loss_total=0
+    print_score_total=0
     with torch.no_grad():
         for iter in range(len(test_pairs)):
             test_pair = test_pairs[iter]
@@ -47,15 +77,26 @@ def evaluate(model, test_pairs, train_input_lang):
             target_variable = test_pair[1]
             input_variable = variableFromSentence(train_input_lang, input_variable)
             target_variable = variableFromSentence(train_input_lang, target_variable)
+            #Compute loss
             loss=model.test(input_variable, target_variable)
+
+
+            #Generate anwer
+            gen_answer=generate_answer(model,test_data.iloc[iter]["Question"],train_input_lang,train_output_lang)
+
+            #Get score
+            print(test_data.iloc[iter]["Question"])
+            print(test_data.iloc[iter]["Answer"])
+            print(gen_answer)
+            score=bleu_score(model,test_data.iloc[iter]["Answer"],gen_answer,n=2)
+            print(score)
             
             print_loss_total += loss
+            print_score_total += score
         
-    return print_loss_total/len(test_pairs)
-    
+    return print_loss_total/len(test_pairs), print_score_total/len(test_pairs)
 
-
-def train(model,training_pairs, n_iters, s2v_model, w2v_model, train_data, data_idx, similarity=cosine_sim, print_every=1000,plot_every=100):
+def train(model,training_pairs, n_iters, s2v_model, w2v_model, train_data, data_idx, similarity=cosine_sim, print_every=100,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
     encoders=model.encoders
     decoder=model.decoder

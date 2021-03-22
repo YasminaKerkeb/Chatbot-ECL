@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 import time
 from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence, TrimWordsSentence
 from src.utils import showPlot, timeSince
-from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.bleu_score import corpus_bleu, sentence_bleu, SmoothingFunction
 
 import random
 from config import DATA_PATH, TEST_SIZE, PARAMS
@@ -41,28 +41,30 @@ def generate_answer(model,input_text,train_input_lang,train_output_lang):
             answer_words, _ =model(trimmed_sentence,train_input_lang,train_output_lang)
             answer = ' '.join(answer_words)
     
-    return answer
+    return answer[:-5]
 
 
-def bleu_score(model,test_data,train_input_lang,train_output_lang,n=2):
+def bleu_score(model,true_answer,gen_answer,n=4):
     """
     Compute BLEU score
     """
-    func=lambda x:generate_answer(model,x,train_input_lang,train_output_lang)
-    test_data["Generated_Answer"]=test_data["Question"].apply(func)
-    print(test_data["Generated_Answer"].head())
     weights = [1.0/n]*n + [0.0]*(4-n)
-    return corpus_bleu(list(test_data["Answer"].values), list(test_data["Generated_Answer"].values), weights)
+    cc=SmoothingFunction()
+    true_answer=' '.join([true_answer]).split()
+    gen_answer=' '.join([gen_answer]).split()
+    return sentence_bleu(true_answer, gen_answer, weights,smoothing_function=cc.method4)
 
 
 
-def evaluate(model, test_pairs, train_input_lang):
+def evaluate(model, test_data, train_input_lang, train_output_lang):
     """
     Evaluate loss model on question answer pairs
 
     """
+    _, _, test_pairs = prepareData(test_data,'questions', 'answers', False)
     model.eval()  # put models in eval mode (this is important because of dropout)
     print_loss_total=0
+    print_score_total=0
     with torch.no_grad():
         for iter in range(len(test_pairs)):
             test_pair = test_pairs[iter]
@@ -70,11 +72,24 @@ def evaluate(model, test_pairs, train_input_lang):
             target_variable = test_pair[1]
             input_variable = variableFromSentence(train_input_lang, input_variable)
             target_variable = variableFromSentence(train_input_lang, target_variable)
+            #Compute loss
             loss=model.test(input_variable, target_variable)
+
+
+            #Generate anwer
+            gen_answer=generate_answer(model,test_data.iloc[iter]["Question"],train_input_lang,train_output_lang)
+
+            #Get score
+            print(test_data.iloc[iter]["Question"])
+            print(test_data.iloc[iter]["Answer"])
+            print(gen_answer)
+            score=bleu_score(model,test_data.iloc[iter]["Answer"],gen_answer)
+            print(score)
             
             print_loss_total += loss
+            print_score_total += score
         
-    return print_loss_total/len(test_pairs)
+    return print_loss_total/len(test_pairs), print_score_total/len(test_pairs)
     
 
 
@@ -145,7 +160,6 @@ def main():
     #Split into train, test set
     train_data, test_data = train_test_split(data, test_size=TEST_SIZE,random_state=11)
     train_input_lang, train_output_lang, train_pairs = prepareData(train_data,'questions', 'answers', False)
-    _, _, test_pairs = prepareData(test_data,'questions', 'answers', False)
     
     input_size=train_input_lang.n_words
     output_size=train_output_lang.n_words
@@ -168,9 +182,7 @@ def main():
             #val_loss = evaluate(mode)
             print("\n\n[Epoch=%d/%d] train_loss %f time=%s \n\n" %
                   (epoch + 1, PARAMS["num_epochs"], train_loss,datetime.now() - start), end='')
-            val_model=val_model_factory(model)
-            train_score=bleu_score(val_model,train_data,train_input_lang,train_output_lang) 
-            print("\n\nTrain BLEU score %f" % train_score)
+            
             # save models if models achieved best val loss (or save every epoch is selected)
             if  train_loss < best_train_loss:
                 params['train_loss']=train_loss
@@ -182,8 +194,7 @@ def main():
         print('[Ctrl-C] Training stopped.')
     
     trained_model=val_model_factory(best_model)
-    test_loss = evaluate(trained_model, test_pairs, train_input_lang)
-    test_score=bleu_score(trained_model,test_data,train_input_lang,train_output_lang)   
+    test_loss, test_score = evaluate(trained_model, test_data, train_input_lang, train_output_lang)  
     print('\n\nSaving model...', end='')
     now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     save_model('best_models/', best_model, now)

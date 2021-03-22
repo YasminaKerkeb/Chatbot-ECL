@@ -6,8 +6,10 @@ from models.retrieve.similarities import cosine_sim
 import pandas as pd
 from models.retrieve.sent2vec import sent2vec
 import re
+import json
 import torch
 from retrieve import answer_question
+from nltk.translate.bleu_score import corpus_bleu, sentence_bleu
 
 class ChatBot(object):
 
@@ -21,6 +23,7 @@ class ChatBot(object):
             output_size=self.train_output_lang.n_words
             self.model=predict_model_factory(model_path,input_size,output_size)
             self.model.eval()
+
         
         
     def reply(self, input_text):
@@ -45,6 +48,7 @@ class ChatBot(object):
         
         else:
             answer="No mode specified"
+
             
         return answer
  
@@ -69,3 +73,14 @@ class ChatBot(object):
         ### Question
         self.s2v = sent2vec(self.data, 'cooc_2')
         self.w2v = self.s2v.get_model()
+
+    def get_topics_data(self,input_text):
+        with open('data/topics_data.json') as json_file:
+            data = json.load(json_file)
+        data=pd.DataFrame.from_dict(data, orient='index').reset_index()
+        data.columns=["Topic","Answer"]
+        data["similarity"]=data["Topic"].apply(lambda x:sentence_bleu([input_text],[x]))
+        query=data.similarity == data.similarity.max()
+
+        return data[query]["Topic"][0], data[query]["Answer"][0]
+
