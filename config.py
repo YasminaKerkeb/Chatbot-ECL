@@ -12,7 +12,7 @@ MODEL_START_FORMAT = "seq2seq-%d"
 
 DATA_PATH='data/youssef_data.csv'
 TEST_SIZE=0.1
-PARAMS={"hidden_size": 100,
+PARAMS={"hidden_size": 300,
         "n_layers":3,
         "dropout_p":0.1,
         "n_iters":5000,

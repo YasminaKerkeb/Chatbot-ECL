@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 import time
 from src.preprocess import normalizeString, prepareData, variablesFromPair, variableFromSentence, TrimWordsSentence
 from src.utils import showPlot, timeSince
+from nltk.translate.bleu_score import corpus_bleu
 
 import random
 from config import DATA_PATH, TEST_SIZE, PARAMS
@@ -27,13 +28,37 @@ from config import DATA_PATH, TEST_SIZE, PARAMS
 
 #Parameters
 
+def generate_answer(model,input_text,train_input_lang,train_output_lang):
+    model.eval()
+    with torch.no_grad():
+        sentences = [s.strip() for s in re.split('[\.\,\?\!]' , input_text)]
+        sentences = sentences[:-1]
+        if sentences==[]:
+            sentences=[input_text]
+        for sentence in sentences : 
+            trimmed_sentence= TrimWordsSentence(normalizeString(sentence))
+            
+            answer_words, _ =model(trimmed_sentence,train_input_lang,train_output_lang)
+            answer = ' '.join(answer_words)
+    
+    return answer
 
+
+def bleu_score(model,test_data,train_input_lang,train_output_lang,n=2):
+    """
+    Compute BLEU score
+    """
+    func=lambda x:generate_answer(model,x,train_input_lang,train_output_lang)
+    test_data["Generated_Answer"]=test_data["Question"].apply(func)
+    print(test_data["Generated_Answer"].head())
+    weights = [1.0/n]*n + [0.0]*(4-n)
+    return corpus_bleu(list(test_data["Answer"].values), list(test_data["Generated_Answer"].values), weights)
 
 
 
 def evaluate(model, test_pairs, train_input_lang):
     """
-    Evaluate model on question answer pairs
+    Evaluate loss model on question answer pairs
 
     """
     model.eval()  # put models in eval mode (this is important because of dropout)
@@ -53,7 +78,7 @@ def evaluate(model, test_pairs, train_input_lang):
     
 
 
-def train(model,training_pairs, n_iters, print_every=1000,plot_every=100):
+def train(model,training_pairs, n_iters, print_every=100,plot_every=100):
     model.train()  # put models in train mode (this is important because of dropout)
     encoder=model.encoder
     decoder=model.decoder
@@ -143,7 +168,9 @@ def main():
             #val_loss = evaluate(mode)
             print("\n\n[Epoch=%d/%d] train_loss %f time=%s \n\n" %
                   (epoch + 1, PARAMS["num_epochs"], train_loss,datetime.now() - start), end='')
-
+            val_model=val_model_factory(model)
+            train_score=bleu_score(val_model,train_data,train_input_lang,train_output_lang) 
+            print("\n\nTrain BLEU score %f" % train_score)
             # save models if models achieved best val loss (or save every epoch is selected)
             if  train_loss < best_train_loss:
                 params['train_loss']=train_loss
@@ -156,13 +183,16 @@ def main():
     
     trained_model=val_model_factory(best_model)
     test_loss = evaluate(trained_model, test_pairs, train_input_lang)
+    test_score=bleu_score(trained_model,test_data,train_input_lang,train_output_lang)   
     print('\n\nSaving model...', end='')
     now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     save_model('best_models/', best_model, now)
     print('\n\nDone', end='')
     print("\n\nTest loss %f" % test_loss)
+    print("\n\nTest BLEU score %f" % test_score)
     print('\n\nSaving metrics...', end='')
     params["test_loss"]=test_loss
+    params["bleu_score"]=bleu_score
     save_metrics({**{"datetime":now},**params})
     print('\n\nDone ')
     
