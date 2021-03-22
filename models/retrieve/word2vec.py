@@ -4,6 +4,7 @@ import nltk
 import spacy
 import torch
 import warnings
+sys.path.append(os.getcwd())
 
 import pandas as pd
 import numpy as np
@@ -18,14 +19,16 @@ warnings.filterwarnings(action='ignore')
 nlp = spacy.load("fr_core_news_sm")
 
 class word2vec():
-    def __init__(self, data):
+    def __init__(self, data, scheme='ws'):
         self.data = data
         self.qa_corpus = qa_corpus(data)
         self.sentences = sentences(data)
         self.words = words(data)
         self.n_words = len(self.words)
         self.tf_dict = tf_table(self.sentences)
-
+        self.scheme = scheme
+        self.model = self.get_model()
+        
 
     def get_embedding_list(self):
         s = "There are multiple embedding kernels : "
@@ -181,30 +184,28 @@ class word2vec():
         return cbow_model
 
 
-    def get_all_models(self):
+    def get_model(self):
         """
         Returns all models computed in dict format
         """
-        models = {
-            'fauc_cbow'   : self.fauconnier('cbow'),
-            'fauc_sgram'  : self.fauconnier('skip'),
-            'camembert'   : self.camembert(),
-            'spacy_emb'   : self.spacy_emb(),
-            'one_hot'     : self.one_hot(),
-            'ws'          : self.word_sentence(weighted=False, reduce=None),
-            'w_ws'        : self.word_sentence(weighted=True,  reduce=None),
-            'ws_svd'      : self.word_sentence(weighted=False, reduce='svd'),
-            'w_ws_svd'    : self.word_sentence(weighted=True,  reduce='svd'),   
-            'ws_sketch'   : self.word_sentence(weighted=False, reduce='sketch'),
-            'w_ws_sketch' : self.word_sentence(weighted=True,  reduce='sketch'),
-            'cooc_2'      : self.cooccurences(),
-            'cooc_5'      : self.cooccurences(window=5),
-            'cooc_svd'    : self.cooccurences(reduce='svd'),
-            'cooc_sketch' : self.cooccurences(reduce='sketch'),
-            'sgram'       : self.sgram(),
-            'cbow'        : self.cbow()    
-        }
-        return models
+        if self.scheme == 'fauc_cbow'   : model = self.fauconnier('cbow')
+        if self.scheme == 'fauc_sgram'  : model = self.fauconnier('skip')
+        if self.scheme == 'camembert'   : model = self.camembert()
+        if self.scheme == 'spacy_emb'   : model = self.spacy_emb()
+        if self.scheme == 'one_hot'     : model = self.one_hot()
+        if self.scheme == 'ws'          : model = self.word_sentence(weighted=False, reduce=None)
+        if self.scheme == 'w_ws'        : model = self.word_sentence(weighted=True,  reduce=None)
+        if self.scheme == 'ws_svd'      : model = self.word_sentence(weighted=False, reduce='svd')
+        if self.scheme == 'w_ws_svd'    : model = self.word_sentence(weighted=True,  reduce='svd')
+        if self.scheme == 'ws_sketch'   : model = self.word_sentence(weighted=False, reduce='sketch')
+        if self.scheme == 'w_ws_sketch' : model = self.word_sentence(weighted=True,  reduce='sketch')
+        if self.scheme == 'cooc_2'      : model = self.cooccurences()
+        if self.scheme == 'cooc_5'      : model = self.cooccurences(window=5)
+        if self.scheme == 'cooc_svd'    : model = self.cooccurences(reduce='svd')
+        if self.scheme == 'cooc_sketch' : model = self.cooccurences(reduce='sketch')
+        if self.scheme == 'sgram'       : model = self.sgram()
+        if self.scheme == 'cbow'        : model = self.cbow()    
+        return model
 
 
 
@@ -215,28 +216,13 @@ if __name__ == '__main__':
     data = pd.read_csv(path, encoding="latin-1", header=None, names=["Question","Answer"]) 
     
     ### Init Word2vec models class
-    w2v = word2vec(data)
+    w2v = word2vec(data, 'ws')
 
     ### List of embdeddings
     print(w2v.get_embedding_list())
 
     ### Select CBOW model
-    model = w2v.fauconnier('cbow')
-    # model = w2v.fauconnier('sgram')
-    # model = w2v.camembert()
-    # model = w2v.spacy_emb()
-    # model = w2v.one_hot()
-    # model = w2v.word_sentence(weighted=False, reduce=None)
-    # model = w2v.word_sentence(weighted=True,  reduce=None)
-    # model = w2v.word_sentence(weighted=False, reduce='svd')
-    # model = w2v.word_sentence(weighted=True,  reduce='svd')    
-    # model = w2v.word_sentence(weighted=False, reduce='sketch')
-    # model = w2v.word_sentence(weighted=True,  reduce='sketch')
-    # model = w2v.cooccurences(window=5)
-    # model = w2v.cooccurences(reduce='svd')
-    # model = w2v.cooccurences(reduce='sketch')
-    # model = w2v.sgram()
-    # model = w2v.cbow()    
+    model = w2v.get_model()
 
     ### Plot word embeddings of words in corpus
     print(model)

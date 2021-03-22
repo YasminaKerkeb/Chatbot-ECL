@@ -11,18 +11,10 @@ from src.preprocess import normalizeString
 
 class sent2vec(word2vec):
     def __init__(self, data, scheme):
-        super().__init__(data)
-        self.models = super().get_all_models()
-        self.scheme = scheme
-        if self.scheme in self.models.keys():
-            self.model = self.models[scheme]
-        else:
-            print("Pick scheme from :\n" + "\n-".join(self.models.keys()))
-
+        super().__init__(data, scheme)
 
     def get_model(self):
-        return self.model
-
+        return super().get_model()
 
     def bow(self, sentence):
         """
@@ -157,7 +149,7 @@ if __name__ == '__main__':
     data["Answer"]=data["Answer"].apply(normalizeString) 
 
     ### Init Word2vec models class
-    s2v = sent2vec(data, "cooc_2")
+    s2v = sent2vec(data, "ws")
     model = s2v.get_embedding_matrix()
 
     ### embed sentences

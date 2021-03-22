@@ -26,15 +26,16 @@ def euclidian_sim(a, b):
     a = np.squeeze(a) if len(a.shape)>1 else np.expand_dims(a, axis=1)
     b = np.squeeze(b) if len(b.shape)>1 else np.expand_dims(b, axis=1)
     M = euclidean_distances(a.T,b.T)
-    return np.where(M==0, 1e5, 1/M)
+    M = 1 - M/np.max(M)
+    return M
 
 def jaccard_sim(sentence_1, sentence_2):
     """
     Compute IoU meseaure on string tokens
     """
-    sentence_1 = normalizeString(sentence_1, target)
+    sentence_1 = normalizeString(sentence_1)
     tokens_1 = sentence_1.split()
-    sentence_2 = normalizeString(sentence_2, target)
+    sentence_2 = normalizeString(sentence_2)
     tokens_2 = sentence_2.split()
     
     union = np.unique(tokens_1.extend(tokens_2))
