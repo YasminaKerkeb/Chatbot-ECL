@@ -14,7 +14,7 @@ def showPlot(points,args):
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
-    plt.savefig('plots/loss_curve_'+str(args[0])+'_'+str(args[1]))
+    plt.savefig('plots/loss_curve_'+str(args[0])+'_'+str(args[1])+'_'+str(args[2]))
     
     
     

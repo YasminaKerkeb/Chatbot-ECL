@@ -26,6 +26,7 @@ class EncoderRNN(nn.Module):
             output, hidden = self.gru(output, hidden)
         return output, hidden
 
+
     def initHidden(self):
         result = Variable(torch.zeros(1, 1, self.hidden_size))
         return result

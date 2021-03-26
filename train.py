@@ -52,6 +52,8 @@ def bleu_score(model,true_answer,gen_answer,n=4):
     cc=SmoothingFunction()
     true_answer=' '.join([true_answer]).split()
     gen_answer=' '.join([gen_answer]).split()
+    print("True answer ",true_answer)
+    print("Gen answer ", gen_answer)
     return sentence_bleu(true_answer, gen_answer, weights,smoothing_function=cc.method4)
 
 
@@ -80,11 +82,10 @@ def evaluate(model, test_data, train_input_lang, train_output_lang):
             gen_answer=generate_answer(model,test_data.iloc[iter]["Question"],train_input_lang,train_output_lang)
 
             #Get score
-            print(test_data.iloc[iter]["Question"])
-            print(test_data.iloc[iter]["Answer"])
-            print(gen_answer)
+            print("Answer: ", gen_answer)
+           
             score=bleu_score(model,test_data.iloc[iter]["Answer"],gen_answer)
-            print(score)
+            print("BLEU ",score)
             
             print_loss_total += loss
             print_score_total += score
@@ -135,7 +136,7 @@ def train(model,training_pairs, n_iters, print_every=100,plot_every=100):
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    showPlot(plot_losses,[encoder.n_layers,encoder.hidden_size])
+    showPlot(plot_losses,[encoder.n_layers,encoder.hidden_size,n_iters])
     
     return print_loss_avg
 
@@ -203,7 +204,7 @@ def main():
     print("\n\nTest BLEU score %f" % test_score)
     print('\n\nSaving metrics...', end='')
     params["test_loss"]=test_loss
-    params["bleu_score"]=bleu_score
+    params["bleu_score"]=test_score
     save_metrics({**{"datetime":now},**params})
     print('\n\nDone ')
     

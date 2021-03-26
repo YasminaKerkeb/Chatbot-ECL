@@ -77,6 +77,8 @@ def evaluate(model, test_data, train_input_lang, train_output_lang):
             target_variable = test_pair[1]
             input_variable = variableFromSentence(train_input_lang, input_variable)
             target_variable = variableFromSentence(train_input_lang, target_variable)
+
+            
             #Compute loss
             loss=model.test(input_variable, target_variable)
 
@@ -142,7 +144,7 @@ def train(model,training_pairs, n_iters, s2v_model, w2v_model, train_data, data_
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    showPlot(plot_losses,[encoders[0].n_layers,encoders[0].hidden_size])
+    showPlot(plot_losses,[encoders[0].n_layers,encoders[0].hidden_size, n_iters])
     
     return print_loss_avg
 
@@ -217,10 +219,10 @@ def main():
         print('[Ctrl-C] Training stopped.')
     
     #trained_model=val_model_factory(best_model)
-    #test_loss = evaluate(trained_model, test_pairs, train_input_lang)
+    #train_loss, train_score = evaluate(trained_model, train_pairs, train_input_lang)
     #print('\n\nSaving model...', end='')
-    now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    save_model('best_models/', best_model, now)
+    #now=datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    #save_model('best_models/', best_model, now)
     print('\n\nDone', end='')
     
 

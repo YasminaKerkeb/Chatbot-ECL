@@ -39,6 +39,7 @@ class Seq2SeqTrain(nn.Module):
     def forward(self, question, answer,criterion = nn.NLLLoss()):
     
         encoder_hidden = self.encoder.initHidden()
+        
 
 
         input_length = question.size()[0]

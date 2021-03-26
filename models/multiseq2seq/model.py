@@ -46,16 +46,16 @@ class MultiSeq2SeqTrain(nn.Module):
         target_length = answer.size()[0]
         encoder_hidden = self.encoders[0].initHidden()
         encoded_outputs=self.full_encode(question,self.encoders[0])
-        
+        n=len(retrieve_candidates)
         for i in range(len(retrieve_candidates)):
    
             reply=retrieve_candidates[i]
             encoded_reply=self.full_encode(reply,self.encoders[i+1])
             encoded_outputs=encoded_outputs+encoded_reply
         
+        
         encoder_outputs=encoded_outputs
        
-        
 
         decoder_input = Variable(torch.LongTensor([[SOS_token]]))
         decoder_input = decoder_input
@@ -143,25 +143,27 @@ class MultiSeq2SeqPredict(nn.Module):
     """
     def __init__(self, pretrained_model):
         super(MultiSeq2SeqPredict, self).__init__()
-        self.encoder = pretrained_model.encoder
+        self.encoders = pretrained_model.encoder
         self.decoder = pretrained_model.decoder
       
-    def forward(self,question,train_input_lang,train_output_lang):
+    def forward(self,question, retrieve_candidates,train_input_lang,train_output_lang):
         
         
         input_variable = variableFromSentence(train_input_lang, question)
         
         input_length = input_variable.size()[0]
 
-        encoder_hidden = self.encoder.initHidden()
-        encoder_outputs = Variable(torch.zeros(MAX_LENGTH, self.encoder.hidden_size))
-        encoder_outputs = encoder_outputs
+        encoder_hidden = self.encoders[0].initHidden()
+        encoded_outputs=self.full_encode(question,self.encoders[0])
+        n=len(retrieve_candidates)
+        for i in range(len(retrieve_candidates)):
+   
+            reply=retrieve_candidates[i]
+            encoded_reply=self.full_encode(reply,self.encoders[i+1])
+            encoded_outputs=encoded_outputs+1/n*encoded_reply
         
-        for ei in range(input_length):
-            encoder_output, encoder_hidden = self.encoder(input_variable[ei],
-                                                    encoder_hidden)
-            encoder_outputs[ei] = encoder_outputs[ei] + encoder_output[0][0]
-            
+        
+        encoder_outputs=encoded_outputs
 
         decoder_input = Variable(torch.LongTensor([[SOS_token]]))  # SOS
         decoder_input = decoder_input
